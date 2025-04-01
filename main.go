@@ -22,6 +22,21 @@ const (
 	ENV_API_KEY = "E2B_API_KEY"
 )
 
+// CONFIG 配置常量声明
+var CONFIG struct {
+	API struct {
+		BASE_URL string
+		API_KEY  string
+	}
+	RETRY struct {
+		MAX_ATTEMPTS int
+		DELAY_BASE   int
+	}
+	MODEL_CONFIG    map[string]ModelConfig
+	DEFAULT_HEADERS map[string]string
+	MODEL_PROMPT    string
+}
+
 // 加载.env文件
 func loadEnv() {
 	// 尝试加载.env文件，如果文件不存在则不报错
@@ -41,35 +56,25 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
-// CONFIG 配置常量
-var CONFIG = struct {
-	API struct {
-		BASE_URL string
-		API_KEY  string
-	}
-	RETRY struct {
-		MAX_ATTEMPTS int
-		DELAY_BASE   int
-	}
-	MODEL_CONFIG    map[string]ModelConfig
-	DEFAULT_HEADERS map[string]string
-	MODEL_PROMPT    string
-}{
-	API: struct {
-		BASE_URL string
-		API_KEY  string
-	}{
-		BASE_URL: "https://fragments.e2b.dev", // 固定值，不从环境变量或.env文件获取
-		API_KEY:  getEnv(ENV_API_KEY, "sk-123456"), // 可通过环境变量覆盖
-	},
-	RETRY: struct {
-		MAX_ATTEMPTS int
-		DELAY_BASE   int
-	}{
-		MAX_ATTEMPTS: 1,
-		DELAY_BASE:   1000,
-	},
-	DEFAULT_HEADERS: map[string]string{
+// 初始化函数，打印当前配置信息
+func init() {
+	// 先设置日志格式
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	
+	// 首先加载.env文件
+	loadEnv()
+	
+	// 初始化随机数生成器
+	rand.Seed(time.Now().UnixNano())
+	
+	// 然后初始化配置
+	CONFIG.API.BASE_URL = "https://fragments.e2b.dev" // 固定值，不从环境变量或.env文件获取
+	CONFIG.API.API_KEY = getEnv(ENV_API_KEY, "sk-123456") // 可通过环境变量覆盖
+	
+	CONFIG.RETRY.MAX_ATTEMPTS = 1
+	CONFIG.RETRY.DELAY_BASE = 1000
+	
+	CONFIG.DEFAULT_HEADERS = map[string]string{
 		"accept":           "*/*",
 		"accept-language":  "zh-CN,zh;q=0.9",
 		"content-type":     "application/json",
@@ -82,20 +87,9 @@ var CONFIG = struct {
 		"sec-fetch-site":   "same-origin",
 		"Referer":          "https://fragments.e2b.dev/",
 		"Referrer-Policy":  "strict-origin-when-cross-origin",
-	},
-	MODEL_PROMPT: "Chatting with users and starting role-playing, the most important thing is to pay attention to their latest messages, use only 'text' to output the chat text reply content generated for user messages, and finally output it in code",
-}
-
-// 初始化函数，打印当前配置信息
-func init() {
-	// 加载.env文件
-	loadEnv()
+	}
 	
-	// 设置日志格式
-	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	
-	// 初始化随机数生成器
-	rand.Seed(time.Now().UnixNano())
+	CONFIG.MODEL_PROMPT = "Chatting with users and starting role-playing, the most important thing is to pay attention to their latest messages, use only 'text' to output the chat text reply content generated for user messages, and finally output it in code"
 	
 	// 打印配置信息
 	log.Printf("服务配置信息:")
@@ -121,180 +115,68 @@ func init() {
 				TopKMax:            500,
 			},
 		},
-		"o3-mini": {
-			ID:          "o3-mini",
-			Provider:    "OpenAI",
-			ProviderID:  "openai",
-			Name:        "o3 Mini",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       4096,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
-			},
-		},
-		"gpt-4o": {
-			ID:          "gpt-4o",
-			Provider:    "OpenAI",
-			ProviderID:  "openai",
-			Name:        "GPT-4o",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       16380,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
-			},
-		},
-		"gpt-4.5-preview": {
-			ID:          "gpt-4.5-preview",
-			Provider:    "OpenAI",
-			ProviderID:  "openai",
-			Name:        "GPT-4.5",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       16380,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
-			},
-		},
-		"gpt-4-turbo": {
-			ID:          "gpt-4-turbo",
-			Provider:    "OpenAI",
-			ProviderID:  "openai",
-			Name:        "GPT-4 Turbo",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       16380,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
-			},
-		},
-		"gemini-1.5-pro": {
-			ID:          "gemini-1.5-pro-002",
-			Provider:    "Google Vertex AI",
-			ProviderID:  "vertex",
-			Name:        "Gemini 1.5 Pro",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
-			},
-		},
-		"gemini-2.5-pro-exp-03-25": {
-			ID:          "gemini-2.5-pro-exp-03-25",
-			Provider:    "Google Generative AI",
-			ProviderID:  "google",
-			Name:        "Gemini 2.5 Pro Experimental 03-25",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            40,
-			},
-		},
-		"gemini-exp-1121": {
-			ID:          "gemini-exp-1121",
-			Provider:    "Google Generative AI",
-			ProviderID:  "google",
-			Name:        "Gemini Experimental 1121",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            40,
-			},
-		},
-		"gemini-2.0-flash-exp": {
-			ID:          "models/gemini-2.0-flash-exp",
-			Provider:    "Google Generative AI",
-			ProviderID:  "google",
-			Name:        "Gemini 2.0 Flash",
-			MultiModal:  true,
-			SystemPrompt: "",
-			OptMax: OptMax{
-				TemperatureMax:     2,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            40,
-			},
-		},
-		"claude-3-5-sonnet-latest": {
-			ID:          "claude-3-5-sonnet-latest",
+		"claude-3-opus-20240229": {
+			ID:          "claude-3-opus-20240229",
 			Provider:    "Anthropic",
 			ProviderID:  "anthropic",
-			Name:        "Claude 3.5 Sonnet",
+			Name:        "claude-3-opus-20240229",
 			MultiModal:  true,
 			SystemPrompt: "",
 			OptMax: OptMax{
 				TemperatureMax:     1,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
+				MaxTokensMax:       0,
+				PresencePenaltyMax: 0,
+				FrequencyPenaltyMax: 0,
+				TopPMax:            0.999,
+				TopKMax:            0,
 			},
 		},
-		"claude-3-7-sonnet-latest": {
-			ID:          "claude-3-7-sonnet-latest",
+		"claude-3-5-sonnet-20240620": {
+			ID:          "claude-3-5-sonnet-20240620",
 			Provider:    "Anthropic",
 			ProviderID:  "anthropic",
-			Name:        "Claude 3.7 Sonnet",
+			Name:        "claude-3-5-sonnet-20240620",
 			MultiModal:  true,
 			SystemPrompt: "",
 			OptMax: OptMax{
 				TemperatureMax:     1,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
+				MaxTokensMax:       0,
+				PresencePenaltyMax: 0,
+				FrequencyPenaltyMax: 0,
+				TopPMax:            0.999,
+				TopKMax:            0,
 			},
 		},
-		"claude-3-5-haiku-latest": {
-			ID:          "claude-3-5-haiku-latest",
+		"claude-3-haiku-20240307": {
+			ID:          "claude-3-haiku-20240307",
 			Provider:    "Anthropic",
 			ProviderID:  "anthropic",
-			Name:        "Claude 3.5 Haiku",
-			MultiModal:  false,
+			Name:        "claude-3-haiku-20240307",
+			MultiModal:  true,
 			SystemPrompt: "",
 			OptMax: OptMax{
 				TemperatureMax:     1,
-				MaxTokensMax:       8192,
-				PresencePenaltyMax: 2,
-				FrequencyPenaltyMax: 2,
-				TopPMax:            1,
-				TopKMax:            500,
+				MaxTokensMax:       0,
+				PresencePenaltyMax: 0,
+				FrequencyPenaltyMax: 0,
+				TopPMax:            0.999,
+				TopKMax:            0,
+			},
+		},
+		"claude-3-sonnet-20240229": {
+			ID:          "claude-3-sonnet-20240229",
+			Provider:    "Anthropic",
+			ProviderID:  "anthropic",
+			Name:        "claude-3-sonnet-20240229",
+			MultiModal:  true,
+			SystemPrompt: "",
+			OptMax: OptMax{
+				TemperatureMax:     1,
+				MaxTokensMax:       0,
+				PresencePenaltyMax: 0,
+				FrequencyPenaltyMax: 0,
+				TopPMax:            0.999,
+				TopKMax:            0,
 			},
 		},
 	}

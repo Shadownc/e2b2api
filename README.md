@@ -96,10 +96,10 @@ go mod tidy
 
 ```bash
 # 编译
-go build -o e2b-gateway main.go
+go build -o e2b2api main.go
 
 # 运行
-./e2b-gateway
+./e2b2api
 ```
 
 服务默认在`http://localhost:8080`上运行。
@@ -498,7 +498,7 @@ docker pull lmyself/e2b2api-go:latest
 ```bash
 # 运行容器，映射8080端口，并设置API密钥
 docker run -d \
-  --name e2b-gateway \
+  --name e2b2api \
   -p 8080:8080 \
   -e E2B_API_KEY="your-api-key" \
   lmyself/e2b2api-go:latest
@@ -509,7 +509,7 @@ docker run -d \
 ```bash
 # 使用自定义.env文件运行
 docker run -d \
-  --name e2b-gateway \
+  --name e2b2api \
   -p 8080:8080 \
   -v $(pwd)/.env:/app/.env \
   lmyself/e2b2api-go:latest
@@ -550,10 +550,15 @@ docker build -t e2b2api-go:latest .
 
 # 运行容器
 docker run -d \
-  --name e2b-gateway \
+  --name e2b2api \
   -p 8080:8080 \
   -e E2B_API_KEY="your-api-key" \
   e2b2api-go:latest
+```
+
+# 单行命令
+```
+docker run -d --name e2b2api -p 8080:8080 -v /your_file_path/.env:/app/.env lmyself/e2b2api-go:latest
 ```
 
 ## 扩展
