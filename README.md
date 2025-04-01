@@ -112,14 +112,19 @@ go build -o e2b-gateway main.go
 GET /v1/models
 ```
 
+**curl示例:**
+```bash
+curl -X GET http://localhost:8080/v1/models \
+  -H "Authorization: Bearer sk-123456"
+```
+
 ### 聊天完成请求
 
 ```
 POST /v1/chat/completions
 ```
 
-请求格式示例:
-
+**请求格式示例:**
 ```json
 {
   "model": "claude-3-7-sonnet-latest",
@@ -130,6 +135,333 @@ POST /v1/chat/completions
   "temperature": 0.7,
   "max_tokens": 500,
   "stream": true
+}
+```
+
+**curl示例 (普通请求):**
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-123456" \
+  -d '{
+    "model": "claude-3-7-sonnet-latest",
+    "messages": [
+      {"role": "system", "content": "你是一个有用的AI助手。"},
+      {"role": "user", "content": "你好，介绍一下自己"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500
+  }'
+```
+
+**curl示例 (流式请求):**
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-123456" \
+  --no-buffer \
+  -d '{
+    "model": "claude-3-7-sonnet-latest",
+    "messages": [
+      {"role": "system", "content": "你是一个有用的AI助手。"},
+      {"role": "user", "content": "你好，介绍一下自己"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500,
+    "stream": true
+  }'
+```
+
+## 开发者集成示例
+
+以下是几种常用编程语言的集成示例，展示如何在您的应用中调用E2B API Gateway。
+
+### JavaScript (Node.js)
+
+```javascript
+// 普通请求示例
+async function sendChatRequest() {
+  const response = await fetch('http://localhost:8080/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer sk-123456'
+    },
+    body: JSON.stringify({
+      model: 'claude-3-7-sonnet-latest',
+      messages: [
+        { role: 'system', content: '你是一个有用的AI助手。' },
+        { role: 'user', content: '你好，介绍一下自己' }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+  
+  const data = await response.json();
+  console.log(data.choices[0].message.content);
+}
+
+// 流式请求示例
+async function streamChatRequest() {
+  const response = await fetch('http://localhost:8080/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer sk-123456'
+    },
+    body: JSON.stringify({
+      model: 'claude-3-7-sonnet-latest',
+      messages: [
+        { role: 'system', content: '你是一个有用的AI助手。' },
+        { role: 'user', content: '你好，介绍一下自己' }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+      stream: true
+    })
+  });
+  
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value);
+    const lines = chunk.split('\n\n');
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        const data = JSON.parse(line.substring(6));
+        if (data.choices[0].delta.content) {
+          process.stdout.write(data.choices[0].delta.content);
+        }
+      }
+    }
+  }
+}
+```
+
+### Python
+
+```python
+import requests
+import json
+import sseclient
+
+# 普通请求示例
+def send_chat_request():
+    url = 'http://localhost:8080/v1/chat/completions'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer sk-123456'
+    }
+    data = {
+        'model': 'claude-3-7-sonnet-latest',
+        'messages': [
+            {'role': 'system', 'content': '你是一个有用的AI助手。'},
+            {'role': 'user', 'content': '你好，介绍一下自己'}
+        ],
+        'temperature': 0.7,
+        'max_tokens': 500
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    result = response.json()
+    print(result['choices'][0]['message']['content'])
+
+# 流式请求示例
+def stream_chat_request():
+    url = 'http://localhost:8080/v1/chat/completions'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer sk-123456'
+    }
+    data = {
+        'model': 'claude-3-7-sonnet-latest',
+        'messages': [
+            {'role': 'system', 'content': '你是一个有用的AI助手。'},
+            {'role': 'user', 'content': '你好，介绍一下自己'}
+        ],
+        'temperature': 0.7,
+        'max_tokens': 500,
+        'stream': True
+    }
+    
+    response = requests.post(url, headers=headers, json=data, stream=True)
+    client = sseclient.SSEClient(response)
+    
+    for event in client.events():
+        if event.data != '[DONE]':
+            chunk = json.loads(event.data)
+            if chunk['choices'][0]['delta'].get('content'):
+                print(chunk['choices'][0]['delta']['content'], end='', flush=True)
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+)
+
+// 聊天请求结构
+type ChatRequest struct {
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Temperature float64       `json:"temperature,omitempty"`
+	MaxTokens   int           `json:"max_tokens,omitempty"`
+	Stream      bool          `json:"stream,omitempty"`
+}
+
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// 聊天响应结构
+type ChatResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// 普通请求示例
+func sendChatRequest() error {
+	url := "http://localhost:8080/v1/chat/completions"
+	
+	chatReq := ChatRequest{
+		Model: "claude-3-7-sonnet-latest",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "你是一个有用的AI助手。"},
+			{Role: "user", Content: "你好，介绍一下自己"},
+		},
+		Temperature: 0.7,
+		MaxTokens:   500,
+	}
+	
+	reqBody, err := json.Marshal(chatReq)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer sk-123456")
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	var chatResp ChatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+		return err
+	}
+	
+	fmt.Println(chatResp.Choices[0].Message.Content)
+	return nil
+}
+
+// 流式请求示例
+func streamChatRequest() error {
+	url := "http://localhost:8080/v1/chat/completions"
+	
+	chatReq := ChatRequest{
+		Model: "claude-3-7-sonnet-latest",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "你是一个有用的AI助手。"},
+			{Role: "user", Content: "你好，介绍一下自己"},
+		},
+		Temperature: 0.7,
+		MaxTokens:   500,
+		Stream:      true,
+	}
+	
+	reqBody, err := json.Marshal(chatReq)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer sk-123456")
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	// 处理SSE流
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "data: ") {
+			data := strings.TrimPrefix(line, "data: ")
+			if data == "[DONE]" {
+				break
+			}
+			
+			var streamResp map[string]interface{}
+			if err := json.Unmarshal([]byte(data), &streamResp); err != nil {
+				continue
+			}
+			
+			choices, ok := streamResp["choices"].([]interface{})
+			if !ok || len(choices) == 0 {
+				continue
+			}
+			
+			choice, ok := choices[0].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			
+			delta, ok := choice["delta"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			
+			content, ok := delta["content"].(string)
+			if ok {
+				fmt.Print(content)
+			}
+		}
+	}
+	
+	return nil
 }
 ```
 
