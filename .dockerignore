@@ -1,0 +1,45 @@
+# Git相关
+.git
+.gitignore
+.github
+
+# IDE相关
+.idea
+.vscode
+*.swp
+*.swo
+
+# 构建产物
+/bin
+/dist
+e2b-gateway
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# 日志文件
+*.log
+
+# 环境变量文件 (但保留示例文件)
+.env
+
+# Go特定
+vendor/
+coverage.txt
+coverage.out
+profile.out
+*.out
+*.test
+*.tmp
+
+# 其他
+README.md
+LICENSE
+Dockerfile
+.dockerignore
+docs/
+**/node_modules/
+**/.DS_Store
+**/Thumbs.db 

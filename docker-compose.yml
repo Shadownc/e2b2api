@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  e2b-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: e2b2api-go:latest
+    container_name: e2b-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - E2B_API_KEY=${E2B_API_KEY:-sk-123456}
+      - E2B_PORT=8080
+      - GIN_MODE=release
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+      # 可选：如果创建了.env文件，可以取消下面这行的注释
+      # - ./.env:/app/.env
+      - type: tmpfs
+        target: /tmp
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3" 

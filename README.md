@@ -148,6 +148,82 @@ POST /v1/chat/completions
 
 有关完整的模型列表，请参阅`/v1/models`响应。
 
+## Docker 部署
+
+本项目提供了完整的 Docker 支持，您可以使用 Docker 来快速部署此服务。
+
+### 使用预构建镜像
+
+可以直接从 Docker Hub 或 GitHub Container Registry 拉取预构建镜像:
+
+```bash
+# 从 Docker Hub 拉取
+docker pull lmyself/e2b2api-go:latest
+```
+
+### 运行 Docker 容器
+
+```bash
+# 运行容器，映射8080端口，并设置API密钥
+docker run -d \
+  --name e2b-gateway \
+  -p 8080:8080 \
+  -e E2B_API_KEY="your-api-key" \
+  lmyself/e2b2api-go:latest
+```
+
+### 使用自定义配置
+
+```bash
+# 使用自定义.env文件运行
+docker run -d \
+  --name e2b-gateway \
+  -p 8080:8080 \
+  -v $(pwd)/.env:/app/.env \
+  lmyself/e2b2api-go:latest
+```
+
+### 使用Docker Compose
+
+项目提供了docker-compose.yml文件，可以更简单地部署服务：
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+您可以通过在启动前设置环境变量来配置服务：
+
+```bash
+# 设置API密钥
+export E2B_API_KEY="your-api-key"
+
+# 启动服务
+docker-compose up -d
+```
+
+### 从源码构建镜像
+
+如果您想自行构建 Docker 镜像，可以执行:
+
+```bash
+# 构建镜像
+docker build -t e2b2api-go:latest .
+
+# 运行容器
+docker run -d \
+  --name e2b-gateway \
+  -p 8080:8080 \
+  -e E2B_API_KEY="your-api-key" \
+  e2b2api-go:latest
+```
+
 ## 扩展
 
 通过 Gin 框架，可以轻松添加自定义中间件和路由，例如：
